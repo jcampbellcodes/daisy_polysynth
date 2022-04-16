@@ -2,24 +2,8 @@
 #include "daisy_seed.h"
 #include <algorithm>
 
-// Shortening long macro for sample rate
-#ifndef sample_rate
-
-#endif
-
-// Interleaved audio definitions
-#define LEFT (i)
-#define RIGHT (i + 1)
-
 using namespace daisysp;
 using namespace daisy;
-
-static DaisySeed seed;
-
-// Helper Modules
-//static Metro tick;
-static ReverbSc verb;
-MidiHandler midi;
 
 class Voice
 {
@@ -34,7 +18,7 @@ class Voice
         osc_.SetWaveform(Oscillator::WAVE_POLYBLEP_TRI);
         env_.Init(samplerate);
         env_.SetSustainLevel(0.5f);
-        env_.SetTime(ADSR_SEG_ATTACK, 0.25f);
+        env_.SetTime(ADSR_SEG_ATTACK, 1.01f);
         env_.SetTime(ADSR_SEG_DECAY, 0.005f);
         env_.SetTime(ADSR_SEG_RELEASE, 0.2f);
         filt_.Init(samplerate);
@@ -163,31 +147,27 @@ class VoiceManager
     }
 };
 
+static DaisySeed seed;
+static ReverbSc verb;
+MidiHandler midi;
 static VoiceManager<24> voice_handler;
 
-
-static float trig = 0;
-
-static void AudioCallback(float **in, float **out, size_t size)
+static void AudioCallback(float **inBuffer, float **outBuffer, size_t inNumSamples)
 {
-    float sig_out;
-    float sum = 0.f;
     // Assign Output Buffers
-    float *out_left, *out_right;
-    float dry, send, wetl, wetr; // Effects Vars
-    out_left  = out[0];
-    out_right = out[1];
-
-    for(size_t i = 0; i < size; i++)
+    float *out_left = outBuffer[0];
+    float *out_right = outBuffer[1];
+    float dry = 0.0f, send = 0.0f, wetl = 0.0f, wetr = 0.0f; // Effects Vars
+    for(size_t sample = 0; sample < inNumSamples; sample++)
     {
+        // get dry sample from the state of the voices
         dry  = voice_handler.Process() * 0.5f; 
+        // run an attenuated dry signal through the reverb
         send = dry * 0.45f;
         verb.Process(send, send, &wetl, &wetr);
-
-        // Output
-        out_left[i]  = dry + wetl;
-        out_right[i] = dry + wetr;
-        trig = 0.0;
+        // sum the dry oscillator and processed reverb signal
+        out_left[sample]  = dry + wetl;
+        out_right[sample] = dry + wetr;
     }
 }
 
@@ -222,8 +202,6 @@ void HandleMidiMessage(MidiEvent m)
 
 int main(void)
 {
-    float init_buff[256]; // buffer for Pluck impulse
-
     // initialize seed hardware and daisysp modules
     float sample_rate;
     seed.Configure();
