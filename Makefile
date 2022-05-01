@@ -1,14 +1,19 @@
-# Project Name
-TARGET = pluck
+pluck: 
+	$(MAKE) -C src
 
-# Sources
-CPP_SOURCES = pluck.cpp
+daisy_libs:
+	./rebuild_daisy_libs.sh
 
-# Library Locations
-LIBDAISY_DIR ?= ../DaisyExamples/libdaisy
-DAISYSP_DIR ?= ../DaisyExamples/DaisySP
+clean:
+	$(MAKE) -C src clean
+	$(MAKE) -C libdaisy clean
+	$(MAKE) -C DaisySP clean
 
-# Core location, and generic Makefile.
-SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
-include $(SYSTEM_FILES_DIR)/Makefile
+program: 
+	$(MAKE) -C src program
 
+program-dfu: 
+	$(MAKE) -C src program-dfu
+
+all: daisy_libs pluck
+     

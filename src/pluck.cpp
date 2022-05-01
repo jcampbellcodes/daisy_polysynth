@@ -4,6 +4,7 @@
 
 using namespace daisysp;
 using namespace daisy;
+using namespace daisy::seed;
 
 class Voice
 {
@@ -147,12 +148,12 @@ class VoiceManager
     }
 };
 
-static DaisySeed seed;
+static DaisySeed seed_handle;
 static ReverbSc verb;
-MidiHandler midi;
+MidiUartHandler midi;
 static VoiceManager<24> voice_handler;
 
-static void AudioCallback(float **inBuffer, float **outBuffer, size_t inNumSamples)
+static void AudioCallback(const float * const*inBuffer, float **outBuffer, unsigned int inNumSamples)
 {
     // Assign Output Buffers
     float *out_left = outBuffer[0];
@@ -204,10 +205,11 @@ int main(void)
 {
     // initialize seed hardware and daisysp modules
     float sample_rate;
-    seed.Configure();
-    seed.Init();
-    sample_rate = seed.AudioSampleRate();
-    midi.Init(MidiHandler::INPUT_MODE_UART1, MidiHandler::OUTPUT_MODE_NONE);
+    seed_handle.Configure();
+    seed_handle.Init();
+    sample_rate = seed_handle.AudioSampleRate();
+    MidiUartHandler::Config midi_config;
+    midi.Init(midi_config);
 
     verb.Init(sample_rate);
     verb.SetFeedback(0.95f);
@@ -216,7 +218,7 @@ int main(void)
     voice_handler.Init(sample_rate);
 
     // start callback
-    seed.StartAudio(AudioCallback);
+    seed_handle.StartAudio(AudioCallback);
     midi.StartReceive();
 
     while(1) 
