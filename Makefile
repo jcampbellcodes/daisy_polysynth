@@ -1,3 +1,5 @@
+all: daisy_libs pluck
+
 pluck: 
 	$(MAKE) -C src
 
@@ -14,6 +16,4 @@ program:
 
 program-dfu: 
 	$(MAKE) -C src program-dfu
-
-all: daisy_libs pluck
      
