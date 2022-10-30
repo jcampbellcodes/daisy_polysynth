@@ -1,6 +1,7 @@
 #include "daisysp.h"
 #include "daisy_seed.h"
 #include <algorithm>
+#include <array>
 
 using namespace daisysp;
 using namespace daisy;
@@ -201,6 +202,24 @@ void HandleMidiMessage(MidiEvent m)
     }
 }
 
+void HandleNoteOn(NoteOnEvent p)
+{
+    // Note Off can come in as Note On w/ 0 Velocity
+    if(p.velocity == 0.f)
+    {
+        voice_handler.OnNoteOff(p.note, p.velocity);
+    }
+    else
+    {
+        voice_handler.OnNoteOn(p.note, p.velocity);
+    }
+}
+
+void HandleNoteOff(NoteOffEvent p)
+{
+    voice_handler.OnNoteOff(p.note, p.velocity);
+}
+
 int main(void)
 {
     // initialize seed hardware and daisysp modules
@@ -221,12 +240,50 @@ int main(void)
     seed_handle.StartAudio(AudioCallback);
     midi.StartReceive();
 
+    constexpr size_t numLeaves = 2;
+    std::array<int32_t, numLeaves> notes = {0x48, 0x50};
+    std::array<int32_t, numLeaves> pins = {28, 27};
+    std::array<Switch, numLeaves> buttons;
+    std::array<bool, numLeaves> states;
+
+    for(auto idx = 0; idx < notes.size(); idx++)
+    {
+        Switch adc;
+        adc.Init(seed_handle.GetPin(pins[idx]), 1000);
+        buttons[idx] = adc;
+        states[idx] = false;
+    }
+
     while(1) 
     {
-        midi.Listen();
-        while(midi.HasEvents())
+        for(auto idx = 0; idx < buttons.size(); idx++)
         {
-            HandleMidiMessage(midi.PopEvent());
+            buttons[idx].Debounce();
+            if(!buttons[idx].Pressed())
+            {
+                if(!states[idx])
+                {
+                    states[idx]=true;
+                    NoteOnEvent event;
+                    event.channel = 0.0;
+                    event.velocity = 1.0;
+                    event.note = notes[idx];
+                    HandleNoteOn(event);
+                }
+            }
+            else
+            {
+                if(states[idx])
+                {
+                    states[idx]=false;
+                    NoteOffEvent event;
+                    event.channel = 0;
+                    event.velocity = 0.0;
+                    event.note = notes[idx];
+                    HandleNoteOff(event);
+                }
+            }
         }
+        System::Delay(1);
     }
 }
