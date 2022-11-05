@@ -2,7 +2,7 @@
 TARGET = pluck
 
 # Sources
-CPP_SOURCES = pluck.cpp
+CPP_SOURCES = pluck.cpp cap1188.cpp
 
 # Library Locations
 LIBDAISY_DIR ?= ../libdaisy

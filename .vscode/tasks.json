@@ -53,12 +53,23 @@
       "type": "shell"
     },
     {
-      "command": "make clean;DEBUG=1 make",
+      "command": "DEBUG=1 make",
       "dependsOn": [
         "build_libdaisy",
         "build_daisysp"
       ],
       "label": "build_all_debug",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "type": "shell"
+    },
+    {
+      "command": "DEBUG=1 make pluck",
+      "label": "build_incremental_debug",
       "options": {
         "cwd": "${workspaceFolder}"
       },
