@@ -22,10 +22,6 @@ class Voice
         env_.SetTime(ADSR_SEG_ATTACK, 1.01f);
         env_.SetTime(ADSR_SEG_DECAY, 0.005f);
         env_.SetTime(ADSR_SEG_RELEASE, 0.2f);
-        filt_.Init(samplerate);
-        filt_.SetFreq(6000.f);
-        filt_.SetRes(0.6f);
-        filt_.SetDrive(0.8f);
     }
 
     float Process()
@@ -37,8 +33,7 @@ class Voice
             if(!env_.IsRunning())
                 active_ = false;
             sig = osc_.Process();
-            filt_.Process(sig);
-            return filt_.Low() * (velocity_ / 127.f) * amp;
+            return sig * (velocity_ / 127.f) * amp;
         }
         return 0.f;
     }
@@ -54,14 +49,11 @@ class Voice
 
     void OnNoteOff() { env_gate_ = false; }
 
-    void SetCutoff(float val) { filt_.SetFreq(val); }
-
     inline bool  IsActive() const { return active_; }
     inline float GetNote() const { return note_; }
 
   private:
     Oscillator osc_;
-    Svf        filt_;
     Adsr       env_;
     float      note_, velocity_;
     bool       active_;
@@ -122,15 +114,6 @@ class VoiceManager
         }
     }
 
-    void SetCutoff(float all_val)
-    {
-        for(size_t i = 0; i < max_voices; i++)
-        {
-            voices[i].SetCutoff(all_val);
-        }
-    }
-
-
   private:
     Voice  voices[max_voices];
     Voice *FindFreeVoice()
@@ -150,6 +133,7 @@ class VoiceManager
 
 static DaisySeed seed_handle;
 static ReverbSc verb;
+static Svf      filt;
 MidiUartHandler midi;
 static VoiceManager<24> voice_handler;
 
@@ -161,8 +145,9 @@ static void AudioCallback(const float * const*inBuffer, float **outBuffer, unsig
     float dry = 0.0f, send = 0.0f, wetl = 0.0f, wetr = 0.0f; // Effects Vars
     for(size_t sample = 0; sample < inNumSamples; sample++)
     {
+        filt.Process(voice_handler.Process());
         // get dry sample from the state of the voices
-        dry  = voice_handler.Process() * 0.5f; 
+        dry  = filt.Low() * 0.5f; 
         // run an attenuated dry signal through the reverb
         send = dry * 0.45f;
         verb.Process(send, send, &wetl, &wetr);
@@ -210,6 +195,11 @@ int main(void)
     sample_rate = seed_handle.AudioSampleRate();
     MidiUartHandler::Config midi_config;
     midi.Init(midi_config);
+
+    filt.Init(sample_rate);
+    filt.SetFreq(6000.f);
+    filt.SetRes(0.6f);
+    filt.SetDrive(0.8f);
 
     verb.Init(sample_rate);
     verb.SetFeedback(0.95f);
